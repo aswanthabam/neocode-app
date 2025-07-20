@@ -1,18 +1,21 @@
 import 'package:digital_vault/src/core/theme/app_theme.dart';
+import 'package:digital_vault/src/core/providers/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class RegistrationScreen extends StatefulWidget {
+class RegistrationScreen extends ConsumerStatefulWidget {
   const RegistrationScreen({super.key});
 
   @override
-  State<RegistrationScreen> createState() => _RegistrationScreenState();
+  ConsumerState<RegistrationScreen> createState() => _RegistrationScreenState();
 }
 
-class _RegistrationScreenState extends State<RegistrationScreen> {
+class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
@@ -23,24 +26,114 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _createAccount() {
+  Future<void> _testConnection() async {
+    print('🔵 UI: Testing connections');
+    try {
+      // Test basic HTTP first
+      print('🔵 UI: Testing basic HTTP connectivity');
+      final authRepository = ref.read(authRepositoryProvider);
+      final basicHttpWorks = await authRepository.testBasicHttp();
+
+      if (!mounted) return;
+
+      if (!basicHttpWorks) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Basic HTTP failed - Check internet connection'),
+            backgroundColor: AppTheme.googleRed,
+          ),
+        );
+        return;
+      }
+
+      // Test API connection
+      print('🔵 UI: Testing API connection');
+      final isConnected = await authRepository.testConnection();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isConnected
+                ? '✅ API connection successful!'
+                : '❌ API connection failed - Server may be down',
+          ),
+          backgroundColor: isConnected
+              ? AppTheme.googleGreen
+              : AppTheme.googleRed,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Connection test failed: ${e.toString()}'),
+          backgroundColor: AppTheme.googleRed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _createAccount() async {
+    print('🔵 UI: Create account button pressed');
     if (_formKey.currentState!.validate()) {
+      print('🔵 UI: Form validation passed');
       setState(() {
         _isLoading = true;
       });
 
-      // Simulate API call
-      Future.delayed(const Duration(seconds: 2), () {
+      try {
+        print('🔵 UI: Getting auth repository');
+        final authRepository = ref.read(authRepositoryProvider);
+        print('🔵 UI: Calling register method');
+        await authRepository.register(
+          fullName: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          username: _usernameController.text.trim(),
+          password: _passwordController.text,
+          passwordConfirm: _confirmPasswordController.text,
+        );
+
+        if (!mounted) return;
+
+        print('🔵 UI: Registration successful');
         setState(() {
           _isLoading = false;
         });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created successfully!'),
+            backgroundColor: AppTheme.googleGreen,
+          ),
+        );
+
         context.go('/pin-setup');
-      });
+      } catch (e) {
+        print('🔴 UI: Registration error: $e');
+        if (!mounted) return;
+
+        setState(() {
+          _isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Registration failed: ${e.toString()}'),
+            backgroundColor: AppTheme.googleRed,
+          ),
+        );
+      }
+    } else {
+      print('🔴 UI: Form validation failed');
     }
   }
 
@@ -251,6 +344,50 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
                       const SizedBox(height: 16),
 
+                      // Username Field
+                      TextFormField(
+                        controller: _usernameController,
+                        decoration: InputDecoration(
+                          labelText: 'Username',
+                          hintText: 'Choose a username',
+                          prefixIcon: Icon(
+                            Icons.person_outline,
+                            color: AppTheme.textSecondary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppTheme.mediumGrey),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppTheme.mediumGrey),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppTheme.googleBlue,
+                              width: 2,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.lightGrey,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter a username';
+                          }
+                          if (value.length < 3) {
+                            return 'Username must be at least 3 characters';
+                          }
+                          if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+                            return 'Username can only contain letters, numbers, and underscores';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
                       // Email Field
                       TextFormField(
                         controller: _emailController,
@@ -405,6 +542,29 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       ),
 
                       const SizedBox(height: 32),
+
+                      // Test Connection Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: _testConnection,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.googleBlue,
+                            side: BorderSide(color: AppTheme.googleBlue),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Test API Connection',
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
 
                       // Create Account Button
                       SizedBox(

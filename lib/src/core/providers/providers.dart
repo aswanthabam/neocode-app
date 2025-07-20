@@ -1,43 +1,210 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:digital_vault/src/core/repositories/auth_repository.dart';
 import 'package:digital_vault/src/core/repositories/document_repository.dart';
 import 'package:digital_vault/src/core/repositories/request_repository.dart';
-import 'package:digital_vault/src/core/services/api_service.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Provides a singleton instance of [ApiService].
-/// This service is responsible for all communication with the backend API.
-final apiServiceProvider = Provider<ApiService>((ref) => ApiService());
+// ==================== REPOSITORY PROVIDERS ====================
 
-/// Provides a singleton instance of [AuthRepository].
-/// Depends on [apiServiceProvider] for authentication-related tasks.
-final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => AuthRepository(ref.watch(apiServiceProvider)),
-);
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  return AuthRepository();
+});
 
-/// Provides a singleton instance of [DocumentRepository].
-/// Depends on [apiServiceProvider] to fetch document-related data.
-final documentRepositoryProvider = Provider<DocumentRepository>(
-  (ref) => DocumentRepository(ref.watch(apiServiceProvider)),
-);
+final documentRepositoryProvider = Provider<DocumentRepository>((ref) {
+  return DocumentRepository();
+});
 
-/// Provides a singleton instance of [RequestRepository].
-/// Depends on [apiServiceProvider] to fetch and manage document requests.
-final requestRepositoryProvider = Provider<RequestRepository>(
-  (ref) => RequestRepository(ref.watch(apiServiceProvider)),
-);
+final requestRepositoryProvider = Provider<RequestRepository>((ref) {
+  return RequestRepository();
+});
 
-// --- Data Providers ---
+// ==================== AUTH STATE PROVIDERS ====================
 
-/// An auto-disposing provider that asynchronously fetches the list of documents.
-/// It uses [documentRepositoryProvider] to get the data.
-/// The UI can watch this provider to show loading/error/data states.
-final documentListProvider = FutureProvider.autoDispose(
-  (ref) => ref.watch(documentRepositoryProvider).getDocuments(),
-);
+final isLoggedInProvider = StateProvider<bool>((ref) {
+  return false;
+});
 
-/// An auto-disposing provider that asynchronously fetches the list of document requests.
-/// It uses [requestRepositoryProvider] to get the data.
-/// The UI can watch this provider to handle loading/error/data states for requests.
-final requestListProvider = FutureProvider.autoDispose(
-  (ref) => ref.watch(requestRepositoryProvider).getRequests(),
-);
+final currentUserProvider = StateProvider<Map<String, dynamic>?>((ref) {
+  return null;
+});
+
+final userProfileProvider = StateProvider<Map<String, dynamic>?>((ref) {
+  return null;
+});
+
+final securitySettingsProvider = StateProvider<Map<String, dynamic>?>((ref) {
+  return null;
+});
+
+// ==================== DOCUMENT STATE PROVIDERS ====================
+
+final documentsProvider = StateProvider<List<Map<String, dynamic>>>((ref) {
+  return [];
+});
+
+final documentCategoriesProvider = StateProvider<List<Map<String, dynamic>>>((
+  ref,
+) {
+  return [];
+});
+
+final documentStatisticsProvider = StateProvider<Map<String, dynamic>?>((ref) {
+  return null;
+});
+
+// ==================== REQUEST STATE PROVIDERS ====================
+
+final documentRequestsProvider = StateProvider<List<Map<String, dynamic>>>((
+  ref,
+) {
+  return [];
+});
+
+final documentSharesProvider = StateProvider<List<Map<String, dynamic>>>((ref) {
+  return [];
+});
+
+final qrCodeSharesProvider = StateProvider<List<Map<String, dynamic>>>((ref) {
+  return [];
+});
+
+final sharingStatisticsProvider = StateProvider<Map<String, dynamic>?>((ref) {
+  return null;
+});
+
+// ==================== NOTIFICATION STATE PROVIDERS ====================
+
+final notificationsProvider = StateProvider<List<Map<String, dynamic>>>((ref) {
+  return [];
+});
+
+final unreadNotificationsCountProvider = StateProvider<int>((ref) {
+  return 0;
+});
+
+// ==================== LOADING STATE PROVIDERS ====================
+
+final isLoadingProvider = StateProvider<bool>((ref) {
+  return false;
+});
+
+final authLoadingProvider = StateProvider<bool>((ref) {
+  return false;
+});
+
+final documentsLoadingProvider = StateProvider<bool>((ref) {
+  return false;
+});
+
+final requestsLoadingProvider = StateProvider<bool>((ref) {
+  return false;
+});
+
+// ==================== ERROR STATE PROVIDERS ====================
+
+final errorMessageProvider = StateProvider<String?>((ref) {
+  return null;
+});
+
+final authErrorProvider = StateProvider<String?>((ref) {
+  return null;
+});
+
+final documentsErrorProvider = StateProvider<String?>((ref) {
+  return null;
+});
+
+final requestsErrorProvider = StateProvider<String?>((ref) {
+  return null;
+});
+
+// ==================== FILTER STATE PROVIDERS ====================
+
+final selectedCategoryProvider = StateProvider<int?>((ref) {
+  return null;
+});
+
+final selectedTrustLevelProvider = StateProvider<String?>((ref) {
+  return null;
+});
+
+final searchQueryProvider = StateProvider<String>((ref) {
+  return '';
+});
+
+final sortOrderProvider = StateProvider<String>((ref) {
+  return 'created_at';
+});
+
+// ==================== UI STATE PROVIDERS ====================
+
+final selectedTabProvider = StateProvider<int>((ref) {
+  return 0;
+});
+
+final showAddDocumentModalProvider = StateProvider<bool>((ref) {
+  return false;
+});
+
+final showShareModalProvider = StateProvider<bool>((ref) {
+  return false;
+});
+
+final selectedDocumentProvider = StateProvider<Map<String, dynamic>?>((ref) {
+  return null;
+});
+
+// ==================== THEME STATE PROVIDERS ====================
+
+final isDarkModeProvider = StateProvider<bool>((ref) {
+  return false;
+});
+
+final primaryColorProvider = StateProvider<int>((ref) {
+  return 0xFF2196F3; // Blue
+});
+
+// ==================== BIOMETRIC STATE PROVIDERS ====================
+
+final biometricEnabledProvider = StateProvider<bool>((ref) {
+  return false;
+});
+
+final biometricTypeProvider = StateProvider<String>((ref) {
+  return 'fingerprint';
+});
+
+// ==================== PIN STATE PROVIDERS ====================
+
+final pinSetProvider = StateProvider<bool>((ref) {
+  return false;
+});
+
+final pinLengthProvider = StateProvider<int>((ref) {
+  return 4;
+});
+
+// ==================== ORGANIZATION STATE PROVIDERS ====================
+
+final organizationProfileProvider = StateProvider<Map<String, dynamic>?>((ref) {
+  return null;
+});
+
+final userStatisticsProvider = StateProvider<Map<String, dynamic>?>((ref) {
+  return null;
+});
+
+final userActivitiesProvider = StateProvider<List<Map<String, dynamic>>>((ref) {
+  return [];
+});
+
+// ==================== NOTIFICATION PREFERENCES PROVIDERS ====================
+
+final notificationPreferencesProvider = StateProvider<Map<String, dynamic>?>((
+  ref,
+) {
+  return null;
+});
+
+final privacySettingsProvider = StateProvider<Map<String, dynamic>?>((ref) {
+  return null;
+});

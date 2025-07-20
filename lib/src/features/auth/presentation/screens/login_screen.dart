@@ -1,15 +1,17 @@
 import 'package:digital_vault/src/core/theme/app_theme.dart';
+import 'package:digital_vault/src/core/providers/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -22,8 +24,60 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _loginWithEmail() {
+  Future<void> _testConnection() async {
+    print('🔵 UI: Testing connections');
+    try {
+      // Test basic HTTP first
+      print('🔵 UI: Testing basic HTTP connectivity');
+      final authRepository = ref.read(authRepositoryProvider);
+      final basicHttpWorks = await authRepository.testBasicHttp();
+
+      if (!mounted) return;
+
+      if (!basicHttpWorks) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Basic HTTP failed - Check internet connection'),
+            backgroundColor: AppTheme.googleRed,
+          ),
+        );
+        return;
+      }
+
+      // Test API connection
+      print('🔵 UI: Testing API connection');
+      final isConnected = await authRepository.testConnection();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isConnected
+                ? '✅ API connection successful!'
+                : '❌ API connection failed - Server may be down',
+          ),
+          backgroundColor: isConnected
+              ? AppTheme.googleGreen
+              : AppTheme.googleRed,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Connection test failed: ${e.toString()}'),
+          backgroundColor: AppTheme.googleRed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _loginWithEmail() async {
+    print('🔵 UI: Login button pressed');
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      print('🔴 UI: Empty fields detected');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in all fields'),
@@ -33,17 +87,50 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    print('🔵 UI: Starting login process');
     setState(() {
       _isLoading = true;
     });
 
-    // Simulate API call
-    Future.delayed(const Duration(seconds: 2), () {
+    try {
+      print('🔵 UI: Getting auth repository');
+      final authRepository = ref.read(authRepositoryProvider);
+      print('🔵 UI: Calling login method');
+      await authRepository.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      print('🔵 UI: Login successful');
       setState(() {
         _isLoading = false;
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Login successful!'),
+          backgroundColor: AppTheme.googleGreen,
+        ),
+      );
+
       context.go('/auth');
-    });
+    } catch (e) {
+      print('🔴 UI: Login error: $e');
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Login failed: ${e.toString()}'),
+          backgroundColor: AppTheme.googleRed,
+        ),
+      );
+    }
   }
 
   void _loginWithGoogle() {
@@ -286,6 +373,29 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
 
                     const SizedBox(height: 32),
+
+                    // Test Connection Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: _testConnection,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.googleBlue,
+                          side: BorderSide(color: AppTheme.googleBlue),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'Test API Connection',
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
 
                     // Sign In Button
                     SizedBox(

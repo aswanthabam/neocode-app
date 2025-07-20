@@ -1,17 +1,19 @@
 import 'package:digital_vault/src/core/theme/app_theme.dart';
+import 'package:digital_vault/src/core/providers/providers.dart';
 import 'package:digital_vault/src/features/auth/presentation/widgets/numeric_keypad.dart';
 import 'package:digital_vault/src/features/auth/presentation/widgets/pin_indicator.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class PinSetupScreen extends StatefulWidget {
+class PinSetupScreen extends ConsumerStatefulWidget {
   const PinSetupScreen({super.key});
 
   @override
-  State<PinSetupScreen> createState() => _PinSetupScreenState();
+  ConsumerState<PinSetupScreen> createState() => _PinSetupScreenState();
 }
 
-class _PinSetupScreenState extends State<PinSetupScreen> {
+class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   String _pin = '';
   bool _isConfirming = false;
   String _confirmPin = '';
@@ -58,10 +60,32 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
     }
   }
 
-  void _verifyPins() {
+  Future<void> _verifyPins() async {
     if (_pin == _confirmPin) {
-      // PINs match, proceed to biometric setup
-      _showBiometricSetup();
+      // PINs match, save to API and proceed to biometric setup
+      try {
+        final authRepository = ref.read(authRepositoryProvider);
+        await authRepository.setSecuritySettings(
+          newPin: _pin,
+          biometricEnabled: false, // Will be set up later
+        );
+
+        if (!mounted) return;
+
+        _showBiometricSetup();
+      } catch (e) {
+        if (!mounted) return;
+
+        setState(() {
+          _confirmPin = '';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save PIN: ${e.toString()}'),
+            backgroundColor: AppTheme.googleRed,
+          ),
+        );
+      }
     } else {
       // PINs don't match, reset confirmation
       setState(() {
